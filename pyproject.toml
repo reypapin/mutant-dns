@@ -39,6 +39,7 @@ BugTracker = "https://github.com/reypapin/mutant-dns/issues"
 [project.scripts]
 mutant-dns-client = "mutant_dns.client:main"
 mutant-dns-server = "mutant_dns.server:main"
+mutant-dns-check  = "mutant_dns.check:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

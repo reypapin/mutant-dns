@@ -18,6 +18,7 @@ import os
 import socket
 import sys
 import threading
+import time
 from collections import defaultdict
 from typing import Optional
 
@@ -137,8 +138,8 @@ class DNSTunnelServer:
         self._buf      = ReassemblyBuffer(output=output, verbose=verbose)
         self._s2c      = S2CQueue()
         self._sock     = None
+        self._sessions = {}   # {tunnel_id: {'t0': float, 'chunks': int, 'bytes': int}}
 
-        # If TUN mode, start reader thread
         if tun_iface is not None:
             self._tun_seq = defaultdict(int)
             t = threading.Thread(target=self._tun_reader_loop, daemon=True)
@@ -147,6 +148,10 @@ class DNSTunnelServer:
     def _log(self, msg: str) -> None:
         if self.verbose:
             print('[mutant-dns server] {}'.format(msg), file=sys.stderr, flush=True)
+
+    def _info(self, msg: str) -> None:
+        """Always-visible status message (not gated by --verbose)."""
+        print('[mutant-dns server] {}'.format(msg), file=sys.stderr, flush=True)
 
     # ── TUN reader (S2C path) ─────────────────────────────────────────────────
 
@@ -189,16 +194,26 @@ class DNSTunnelServer:
 
         subdomain = qname_to_encoded(qname, self.domain)
 
+        # ── Check / ping message ──────────────────────────────────────────────
+        if subdomain.startswith('cncheck'):
+            self._log('check probe from {}'.format(addr[0]))
+            return self._make_check_reply(request)
+
         # ── FIN control message ───────────────────────────────────────────────
         if subdomain.startswith(FIN_PREFIX):
             try:
                 tid = int(subdomain[len(FIN_PREFIX):len(FIN_PREFIX) + 4], 16)
+                sess = self._sessions.pop(tid, None)
+                if sess:
+                    elapsed = time.time() - sess['t0']
+                    self._info('Tunnel {:04x} closed — {} chunks, {} bytes in {:.1f}s'.format(
+                        tid, sess['chunks'], sess['bytes'], elapsed))
                 self._buf.close(tid)
             except (ValueError, IndexError):
                 pass
             return self._make_reply(request, tunnel_id=None)
 
-        # ── Poll message (empty, client checking for S2C data) ───────────────
+        # ── Poll message (client checking for S2C data) ───────────────────────
         if subdomain.startswith('cnpoll'):
             try:
                 tid = int(subdomain[6:10], 16)
@@ -211,9 +226,15 @@ class DNSTunnelServer:
             result = parse_packet(subdomain)
             if result is not None:
                 payload, tunnel_id, seq, codec = result
+                # Track session — print on first packet
+                if tunnel_id not in self._sessions:
+                    self._sessions[tunnel_id] = {'t0': time.time(), 'chunks': 0, 'bytes': 0}
+                    self._info('New connection: tunnel_id={:04x} from {}'.format(
+                        tunnel_id, addr[0]))
+                self._sessions[tunnel_id]['chunks'] += 1
+                self._sessions[tunnel_id]['bytes']  += len(payload)
                 self._log('tid={:04x} seq={} codec={} payload={}B'.format(
                     tunnel_id, seq, codec, len(payload)))
-                # C2S: write to output or TUN
                 if self.tun_iface is not None:
                     try:
                         self.tun_iface.write(payload)
@@ -224,6 +245,19 @@ class DNSTunnelServer:
                 return self._make_reply(request, tunnel_id=tunnel_id)
 
         return self._make_reply(request, tunnel_id=None)
+
+    def _make_check_reply(self, request: DNSRecord) -> bytes:
+        """Respond to cncheck probe with a TXT record identifying the server."""
+        from mutant_dns import __version__
+        reply = request.reply()
+        reply.header.rcode = RCODE.NOERROR
+        reply.add_answer(RR(
+            rname=request.q.qname,
+            rtype=QTYPE.TXT,
+            ttl=1,
+            rdata=TXT([b'mutant-dns:ok:' + __version__.encode()]),
+        ))
+        return reply.pack()
 
     def _make_reply(self, request: DNSRecord, tunnel_id: Optional[int]) -> bytes:
         """Build a DNS reply. Piggyback S2C data in TXT record if available."""
@@ -262,6 +296,7 @@ class DNSTunnelServer:
 
         print('[mutant-dns server] Listening on {}:{} for domain={}'.format(
             self.host, self.port, self.domain), file=sys.stderr, flush=True)
+        print('[mutant-dns server] Waiting for connections...', file=sys.stderr, flush=True)
 
         while True:
             try:

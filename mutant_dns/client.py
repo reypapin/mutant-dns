@@ -51,27 +51,38 @@ def _send_dns(qname: str, qtype: str, server: str, port: int,
               timeout: float = 3.0) -> tuple:
     """
     Send a single DNS query.
-    Returns (success: bool, rdata_txt: list[str])
-      rdata_txt contains TXT record strings from the answer (for S2C data).
+    Returns (success: bool, rdata_txt: list[str], rcode: Optional[int])
+      rcode is None on timeout/network error, integer DNS rcode otherwise.
     """
     rdtype = _RDTYPE_MAP.get(qtype, dns.rdatatype.A)
     try:
         q = dns.message.make_query(qname, rdtype)
         q.use_edns(0, 0, 1232)
         resp = dns.query.udp(q, server, port=port, timeout=timeout)
-        ok = (resp.rcode() == 0)
+        rcode = resp.rcode()
+        ok = (rcode == 0)
 
-        # Extract TXT records from answer (server may piggyback S2C data)
         txt_data = []
         for rrset in resp.answer:
             if rrset.rdtype == dns.rdatatype.TXT:
                 for rdata in rrset:
                     for string in rdata.strings:
                         txt_data.append(string.decode('latin-1'))
-        return ok, txt_data
+        return ok, txt_data, rcode
 
+    except dns.exception.Timeout:
+        return False, [], None
     except (dns.exception.DNSException, socket.error, OSError):
-        return False, []
+        return False, [], None
+
+
+_RCODE_HINTS = {
+    None: 'timeout — is port {port} open on the server? (try: nc -uz {server} {port})',
+    1:    'FORMERR — malformed query (protocol error)',
+    2:    'SERVFAIL — server internal error',
+    3:    'NXDOMAIN — domain not handled; check --domain matches server config',
+    5:    'REFUSED — server rejected the query',
+}
 
 
 # ── Tunnel client ─────────────────────────────────────────────────────────────
@@ -134,8 +145,10 @@ class TunnelClient:
         qname   = encoded_to_qname(encoded, self.domain)
         qtype   = _choose_qtype()
 
+        last_rcode = None
         for attempt in range(self.retries):
-            ok, txt = _send_dns(qname, qtype, self.server, self.port)
+            ok, txt, rcode = _send_dns(qname, qtype, self.server, self.port)
+            last_rcode = rcode
             self._process_s2c(txt)
             if ok:
                 self._log('seq={} codec={} chunk={}B qtype={} OK'.format(
@@ -145,7 +158,9 @@ class TunnelClient:
             if attempt < self.retries - 1:
                 time.sleep(0.3)
 
-        self._log('seq={} FAILED after {} attempts'.format(self.seq, self.retries))
+        hint = _RCODE_HINTS.get(last_rcode, 'rcode={}'.format(last_rcode))
+        hint = hint.format(port=self.port, server=self.server)
+        self._log('seq={} FAILED — {}'.format(self.seq, hint))
         return False
 
     # ── Server-to-client data (piggyback in TXT records) ─────────────────────
@@ -171,14 +186,14 @@ class TunnelClient:
         """Signal end-of-tunnel to the server."""
         label = '{}{:04x}{:04x}'.format(FIN_PREFIX, self.tunnel_id, self.seq)
         qname = '{}.{}'.format(label, self.domain)
-        _send_dns(qname, 'TXT', self.server, self.port)
+        _send_dns(qname, 'TXT', self.server, self.port)  # fire-and-forget
         self._log('FIN sent tunnel_id={:04x}'.format(self.tunnel_id))
 
     def _send_poll(self) -> list:
         """Send an empty poll query; return any TXT records (S2C data)."""
         label = 'cnpoll{:04x}{:04x}'.format(self.tunnel_id, self.seq)
         qname = '{}.{}'.format(label, self.domain)
-        _, txt = _send_dns(qname, 'TXT', self.server, self.port)
+        _, txt, _ = _send_dns(qname, 'TXT', self.server, self.port)
         return txt
 
     # ── Public API: data mode ─────────────────────────────────────────────────
