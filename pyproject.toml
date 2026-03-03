@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mutant-dns"
+version = "0.1.0"
+description = "DNS tunnel with 4-dimensional structural mutations that evade ML-based detectors"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+keywords = ["dns", "tunnel", "security", "research", "evasion", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Internet :: Name Service (DNS)",
+]
+dependencies = [
+    "dnspython>=2.4.0",
+    "dnslib>=0.9.19",
+]
+
+[project.urls]
+Homepage   = "https://github.com/reypapin/mutant-dns"
+Paper      = "https://github.com/reypapin/Tunnel-DNS"
+BugTracker = "https://github.com/reypapin/mutant-dns/issues"
+
+[project.scripts]
+mutant-dns-client = "mutant_dns.client:main"
+mutant-dns-server = "mutant_dns.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mutant_dns*"]
