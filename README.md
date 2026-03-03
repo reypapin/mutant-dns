@@ -194,7 +194,7 @@ The combined bytes are encoded with the selected codec and split into ≤63-char
 | Logistic Reg. | 98.52% | 45.61% | 100% |
 
 Hardening requires only 3.63% adversarial examples in the training set.
-Use the [Mutant Payload dataset](https://github.com/reypapin/Tunnel-DNS) to harden your detector.
+Use the [Mutant Payload dataset](https://github.com/reypapin/Dns-Tunnel-Robustness) to harden your detector.
 
 ---
 
@@ -215,6 +215,6 @@ Use only on networks and systems you own or have explicit authorization to test.
 @article{leyva2025mutant,
   title   = {Simple Payload Mutations Break Machine Learning Based DNS Tunneling Detection},
   author  = {Leyva La O, Reynier and Catania, Carlos A.},
-  year    = {2025}
+  year    = {2026}
 }
 ```
