@@ -5,8 +5,8 @@ DNS tunnel with **4-dimensional structural mutations** that defeat ML-based dete
 Standard tools like [iodine](https://code.kryo.se/iodine/) and [dnscat2](https://github.com/iagox86/dnscat2) always place their protocol headers at byte offset 0–20 of the encoded payload. ML detectors learn this positional signature and achieve 98%+ recall. **mutant-dns** moves the header to a random position at 70–80% of the payload, randomizes the encoding per packet, varies chunk sizes, and randomizes inter-query timing — four simple changes that drop detection to 0% on tree-based models and below 30% on neural networks.
 
 > Based on: *"Simple Payload Mutations Break Machine Learning Based DNS Tunneling Detection"*
-> Reynier Leyva La O & Carlos A. Catania — 2025
-> [Dataset & framework →](https://github.com/reypapin/Tunnel-DNS)
+> Reynier Leyva La O & Carlos A. Catania — 2026
+> [Dataset & framework →](https://github.com/reypapin/Dns-Tunnel-Robustness)
 
 ---
 
