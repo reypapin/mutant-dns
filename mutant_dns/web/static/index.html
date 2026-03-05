@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mutant-dns // Visual Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>mutant-dns <span class="subtitle">// live tunnel visualizer</span></h1>
+    <div class="status" id="status">Connecting...</div>
+  </header>
+
+  <main>
+    <!-- Control Panel -->
+    <section class="panel control-panel">
+      <h2>Send Data</h2>
+      <div class="form-row">
+        <textarea id="input-text" rows="2" placeholder="Type data to exfiltrate...">Hello from mutant-dns! This is a secret message being tunneled through DNS queries.</textarea>
+      </div>
+      <div class="form-row options">
+        <label>
+          Encoding
+          <select id="opt-encoding">
+            <option value="weighted" selected>weighted (mixed)</option>
+            <option value="hex">hex</option>
+            <option value="base32">base32</option>
+            <option value="base64">base64</option>
+          </select>
+        </label>
+        <label>
+          Chunking
+          <select id="opt-chunking">
+            <option value="variable" selected>variable</option>
+            <option value="fixed40">fixed 40B</option>
+            <option value="fixed35">fixed 35B</option>
+            <option value="fixed16">fixed 16B</option>
+          </select>
+        </label>
+        <label>
+          Timing
+          <select id="opt-timing">
+            <option value="burst" selected>burst (fast)</option>
+            <option value="random">random</option>
+            <option value="steady">steady (1s)</option>
+            <option value="human">human-like</option>
+            <option value="burst_pause">burst+pause</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row buttons">
+        <button id="btn-send" class="btn-primary">Send Through Tunnel</button>
+        <button id="btn-compare" class="btn-secondary">Compare: Standard vs Mutant</button>
+      </div>
+    </section>
+
+    <!-- Live Traffic Animation -->
+    <section class="panel traffic-panel">
+      <h2>Live Traffic <span class="packet-count" id="packet-count">0 packets</span></h2>
+      <div class="tunnel-viz" id="tunnel-viz">
+        <div class="endpoint client-ep">
+          <div class="ep-icon">CLIENT</div>
+        </div>
+        <div class="tunnel-pipe" id="tunnel-pipe">
+          <div class="pipe-line"></div>
+          <div class="dns-label">DNS Queries (port 5353)</div>
+        </div>
+        <div class="endpoint server-ep">
+          <div class="ep-icon">SERVER</div>
+        </div>
+      </div>
+      <div class="packet-stream" id="packet-stream"></div>
+    </section>
+
+    <!-- Comparison View -->
+    <section class="panel compare-panel" id="compare-panel" style="display:none">
+      <h2>Header Position: Standard Tools vs mutant-dns</h2>
+      <div class="compare-container">
+        <div class="compare-side">
+          <h3>iodine / dnscat2 <span class="tag tag-red">detectable</span></h3>
+          <div class="byte-bar" id="bar-standard"></div>
+          <p class="compare-note">Header always at byte 0 &mdash; ML learns this fixed pattern (98%+ recall)</p>
+        </div>
+        <div class="compare-side">
+          <h3>mutant-dns <span class="tag tag-green">evasive</span></h3>
+          <div class="byte-bar" id="bar-mutant"></div>
+          <p class="compare-note">Header at random 70-80% offset &mdash; breaks positional features (0% detection on tree models)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="panel stats-panel">
+      <h2>Session Stats</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-packets">0</div>
+          <div class="stat-label">Packets Sent</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-bytes">0</div>
+          <div class="stat-label">Bytes Tunneled</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-tunnels">0</div>
+          <div class="stat-label">Tunnels</div>
+        </div>
+        <div class="stat-card codec-stats">
+          <div class="codec-bars">
+            <div class="codec-row"><span class="codec-name">hex</span><div class="codec-bar-bg"><div class="codec-bar-fill hex-fill" id="bar-hex"></div></div><span class="codec-pct" id="pct-hex">0</span></div>
+            <div class="codec-row"><span class="codec-name">base32</span><div class="codec-bar-bg"><div class="codec-bar-fill b32-fill" id="bar-b32"></div></div><span class="codec-pct" id="pct-b32">0</span></div>
+            <div class="codec-row"><span class="codec-name">base64</span><div class="codec-bar-bg"><div class="codec-bar-fill b64-fill" id="bar-b64"></div></div><span class="codec-pct" id="pct-b64">0</span></div>
+          </div>
+          <div class="stat-label">Codec Distribution</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Packet Log -->
+    <section class="panel log-panel">
+      <h2>Packet Log <button id="btn-clear" class="btn-small">Clear</button></h2>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Tunnel</th>
+              <th>Seq</th>
+              <th>Codec</th>
+              <th>Payload</th>
+              <th>Encoded</th>
+              <th>Preview</th>
+            </tr>
+          </thead>
+          <tbody id="log-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>mutant-dns &mdash; DNS tunnel with 4D structural mutations | Leyva La O & Catania, 2026</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

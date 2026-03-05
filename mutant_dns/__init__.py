@@ -10,4 +10,4 @@ Mutations:
   3. Chunking  — variable or fixed chunk sizes
   4. Timing    — realistic inter-query delays
 """
-__version__ = '0.1.0'
+__version__ = '0.2.0'

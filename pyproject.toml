@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mutant-dns"
-version = "0.1.0"
+version = "0.2.0"
 description = "DNS tunnel with 4-dimensional structural mutations that evade ML-based detectors"
 readme = "README.md"
 license = {text = "MIT"}
@@ -31,6 +31,13 @@ dependencies = [
     "dnslib>=0.9.19",
 ]
 
+[project.optional-dependencies]
+web = [
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.20",
+    "websockets>=11.0",
+]
+
 [project.urls]
 Homepage   = "https://github.com/reypapin/mutant-dns"
 Paper      = "https://github.com/reypapin/Tunnel-DNS"
@@ -40,7 +47,11 @@ BugTracker = "https://github.com/reypapin/mutant-dns/issues"
 mutant-dns-client = "mutant_dns.client:main"
 mutant-dns-server = "mutant_dns.server:main"
 mutant-dns-check  = "mutant_dns.check:main"
+mutant-dns-web    = "mutant_dns.web:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mutant_dns*"]
+
+[tool.setuptools.package-data]
+"mutant_dns.web" = ["static/**/*"]
